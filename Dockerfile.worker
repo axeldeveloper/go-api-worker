@@ -1,0 +1,12 @@
+FROM golang:1.15-alpine
+# FROM golang:alpine
+
+
+RUN apk add --update git;
+
+RUN apk add build-base
+
+RUN go get -u github.com/gocraft/work/cmd/workwebui && \
+  go install github.com/gocraft/work/cmd/workwebui
+
+CMD workwebui -redis="$REDIS_HOSTS" -ns="work_namespace" -listen="0.0.0.0:8003"
