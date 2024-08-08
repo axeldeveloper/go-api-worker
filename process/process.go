@@ -2,6 +2,7 @@ package process
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
 	"os/signal"
 
@@ -15,6 +16,14 @@ var (
 
 type Context struct {
 	customerID int64
+}
+
+func (c *Context) Testar(job *work.Job) error {
+	fmt.Println("Starting RUBT:", job.Name)
+
+	//fmt.Println("Send email to:", addr, "with subject:", subject, "and customer id:", c.customerID)
+
+	return nil
 }
 
 func (c *Context) Log(job *work.Job, next work.NextMiddlewareFunc) error {
@@ -60,6 +69,45 @@ func (c *Context) Scheduler(job *work.Job) error {
 	return nil
 }
 
+func (c *Context) CalculateSalary(job *work.Job) error {
+	fmt.Println("Starting CalculateSalary Job: ", job.Name)
+	fmt.Println("Calcalar a cada 30s. ")
+
+	// Obter valores de job.ArgInt64
+	a := job.ArgInt64("val_1")
+	b := job.ArgInt64("val_2")
+
+	// Verificar se os valores são válidos
+	if a == 0 {
+		fmt.Println("valor 'val_1' não foi informado")
+		//return fmt.Errorf("valor 'val_1' não foi informado")
+	}
+	if b == 0 {
+		fmt.Println("valor 'val_2' não foi informado")
+		//return fmt.Errorf("valor 'val_2' não foi informado")
+	}
+
+	// Usar os valores conforme necessário
+	fmt.Printf("Valores recebidos: a = %d, b = %d\n", a, b)
+
+	fmt.Println("CalculateSalary")
+	fmt.Print((rand.Float64()*5)+5, ",")
+	fmt.Println(job.Name)
+	return nil
+}
+
+func (c *Context) SendEmailIn(job *work.Job) error {
+	email := job.ArgString("email")
+	if err := job.ArgError(); err != nil {
+		return err
+	}
+
+	// Go ahead and send the email...
+	fmt.Println("Scheduler Send email to:", email)
+
+	return nil
+}
+
 func NewProcessManager(redisPool *redis.Pool, numWorkers uint, namespace string) *ProcessManager {
 	ctx := Context{} // Substitua com o contexto que você está usando
 	pool := work.NewWorkerPool(ctx, numWorkers, namespace, redisPool)
@@ -67,11 +115,20 @@ func NewProcessManager(redisPool *redis.Pool, numWorkers uint, namespace string)
 	pool.Middleware((*Context).FindCustomer)
 	pool.Job("send_email", (*Context).SendEmail)
 	pool.Job("scheduler_job", (*Context).Scheduler)
+	pool.Job("send_welcome_email", (*Context).SendEmailIn)
+
+	// pool.PeriodicallyEnqueue("*/30 * * * *", "calculate_salary")
+	pool.Job("calculate_salary", (*Context).CalculateSalary)
+
 	return &ProcessManager{pool: pool}
 }
 
 type ProcessManager struct {
 	pool *work.WorkerPool
+}
+
+func (pm *ProcessManager) Register(job_name string, call interface{}) {
+	pm.pool.Job(job_name, call)
 }
 
 func (pm *ProcessManager) Start() {

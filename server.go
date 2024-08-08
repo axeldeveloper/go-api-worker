@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 	"time"
 
@@ -23,7 +24,7 @@ var redisPools = &redis.Pool{
 	MaxIdle:   5,
 	Wait:      true,
 	Dial: func() (redis.Conn, error) {
-		return redis.Dial("tcp", ":6379")
+		return redis.Dial("tcp", "redis:6379")
 	},
 }
 
@@ -67,6 +68,7 @@ func EventHundler(w http.ResponseWriter, r *http.Request) {
 
 	queueService := usecase.NewQueueService(redisPools)
 	queueService.StarQueue(id)
+	queueService.SendEmailIn("patton@gmail.com")
 
 	schedulerService := usecase.NewSchedulerService(redisPools)
 	schedulerService.StarScheduler(200, "AXELPATTO@GMAIL.COM")
@@ -76,30 +78,34 @@ func EventHundler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(eve)
 }
 
-func init() {
+func CalcHundler(w http.ResponseWriter, r *http.Request) {
+	// id := r.URL.Path[len("/event/"):]
+	vars := mux.Vars(r)
+	id := vars["id"]
+	eve := Event{ID: id}
+	num, _ := strconv.ParseInt(id, 10, 64)
 
+	queueService := usecase.NewCalculateSalaryService(redisPools)
+	queueService.Calc(num, 10)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(eve)
+}
+
+func init() {
 	processManager = process.NewProcessManager(redisPools, 10, NamespaceWork)
 	//processManager.StartSignal()
-	/*
-		pool = work.NewWorkerPool(Context{}, 10, NamespaceWork, redisPools)
-		pool.Middleware((*Context).Log)
-		pool.Middleware((*Context).FindCustomer)
-		pool.Job("send_email", (*Context).SendEmail)
-		pool.Job("scheduler_job", (*Context).Scheduler)
-		fmt.Println("prepare worker")
-	*/
 }
 
 func main() {
-	// apartir do go 1.22 "net/http" não precisa mais do mux
-	// mux := http.NewServeMux()
-	// process.StartProcess(redisPools)
 
 	fmt.Println("Iniciando servidor web")
 
 	r := mux.NewRouter()
 	r.HandleFunc("/index", SomeHandler)
 	r.HandleFunc("/event/{id}", EventHundler)
+	r.HandleFunc("/calc/{id}", CalcHundler)
 
 	server := &http.Server{
 		Addr:    ":8001",

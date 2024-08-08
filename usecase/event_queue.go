@@ -27,3 +27,12 @@ func (qs *QueueService) StarQueue(email string) {
 		log.Fatal(err)
 	}
 }
+
+func (qs *QueueService) SendEmailIn(email string) {
+	payload := work.Q{"email": email, "subject": "hello world", "customer_id": 4}
+	_, err := qs.enqueuer.EnqueueIn("send_welcome_email", 300, payload)
+
+	if err != nil {
+		log.Fatal(err)
+	}
+}

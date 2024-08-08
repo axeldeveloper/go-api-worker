@@ -11,9 +11,9 @@ services:
     volumes:
       # Linux
       #- 'redis:/data'
-      #- /home/axel/Dev/docker/redis/data:/var/lib/redis/data
+      - /home/axel/Dev/docker/redis/data:/var/lib/redis/data
       # MacOS
-      - /Users/axel/Dev/docker/redis/data:/var/lib/redis/data
+      # - /Users/axel/Dev/docker/redis/data:/var/lib/redis/data
 
   redis-commander:
     container_name: redis-commander
@@ -33,3 +33,14 @@ services:
         dockerfile: Dockerfile.worker
     ports:
       - "8003:8003"
+
+  worker:
+    # restart: always
+    environment:
+      - REDIS_HOSTS=redis://redis:6379
+      # - REDIS_ADDR=redis:6379
+    build:
+        context: .
+        dockerfile: Dockerfile.dev
+    ports:
+      - "8001:8001"

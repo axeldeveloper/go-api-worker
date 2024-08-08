@@ -1,0 +1,20 @@
+FROM golang:1.20-alpine
+
+# Definir o diretório de trabalho
+WORKDIR /app
+
+# Copiar os arquivos de definição de módulos Go e baixar as dependências
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copiar todos os arquivos Go para o contêiner
+COPY . .
+
+# Construir o binário Go
+RUN go build -o /worker .
+
+# Expor a porta que o aplicativo usará
+EXPOSE 8001
+
+# Comando para rodar o binário
+CMD [ "/worker" ]
